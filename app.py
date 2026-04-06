@@ -19,12 +19,13 @@ import tempfile
 class Config:
     # Model & Detection
     MODEL_PATH = "1.pt"
-    CONFIDENCE_THRESHOLD = 0.7
+    CONFIDENCE_THRESHOLD = 0.45  # Hạ thấp mức tin cậy để dễ bắt các vật nhỏ bị tay che bớt
 
     # Camera & Display
     CAMERA_WIDTH = 1280
     CAMERA_HEIGHT = 720
     PANEL_WIDTH = 320
+    # Khung nhận diện rộng như ban đầu (0.85), thuật toán center_bonus tự xử lý ưu tiên
     DETECTION_BOX_RATIO = 0.85
 
     # Timing
@@ -39,18 +40,13 @@ class Config:
 
 # ==================== DATABASE TỪ VỰNG ====================
 VOCAB_DB = {
-    # Người & Động vật
-    "Person": {"vi": "Con người", "answer": "person", "cat": "👤 Người"},
+    # Động vật
     "Bird": {"vi": "Chim", "answer": "bird", "cat": "🦜 Động vật"},
     "Cat": {"vi": "Mèo", "answer": "cat", "cat": "🦜 Động vật"},
     "Dog": {"vi": "Chó", "answer": "dog", "cat": "🦜 Động vật"},
     "Horse": {"vi": "Ngựa", "answer": "horse", "cat": "🦜 Động vật"},
-    "Sheep": {"vi": "Cừu", "answer": "sheep", "cat": "🦜 Động vật"},
     "Cow": {"vi": "Bò", "answer": "cow", "cat": "🦜 Động vật"},
     "Elephant": {"vi": "Voi", "answer": "elephant", "cat": "🦜 Động vật"},
-    "Bear": {"vi": "Gấu", "answer": "bear", "cat": "🦜 Động vật"},
-    "Zebra": {"vi": "Ngựa vằn", "answer": "zebra", "cat": "🦜 Động vật"},
-    "Giraffe": {"vi": "Hươu cao cổ", "answer": "giraffe", "cat": "🦜 Động vật"},
 
     # Phương tiện
     "Bicycle": {"vi": "Xe đạp", "answer": "bicycle", "cat": "🚗 Phương tiện"},
@@ -62,11 +58,35 @@ VOCAB_DB = {
     "Truck": {"vi": "Xe tải", "answer": "truck", "cat": "🚗 Phương tiện"},
     "Boat": {"vi": "Thuyền", "answer": "boat", "cat": "🚗 Phương tiện"},
 
-    # Đồ dùng
-    "Cell Phone": {"vi": "Điện thoại", "answer": "cell phone", "cat": "📱 Đồ dùng"},
-    "Bottle": {"vi": "Chai", "answer": "bottle", "cat": "📱 Đồ dùng"},
-    "Cup": {"vi": "Cốc", "answer": "cup", "cat": "📱 Đồ dùng"},
-    "Remote": {"vi": "Điều khiển", "answer": "remote", "cat": "📱 Đồ dùng"}
+    # Công nghệ
+    "Cell Phone": {"vi": "Điện thoại", "answer": "cell phone", "cat": "📱 Thiết bị"},
+    "Laptop": {"vi": "Laptop", "answer": "laptop", "cat": "📱 Thiết bị"},
+    "Mouse": {"vi": "Chuột (MT)", "answer": "mouse", "cat": "📱 Thiết bị"},
+    "Keyboard": {"vi": "Bàn phím", "answer": "keyboard", "cat": "📱 Thiết bị"},
+    "Remote": {"vi": "Điều khiển", "answer": "remote", "cat": "📱 Thiết bị"},
+    "TV Monitor": {"vi": "Màn hình TV", "answer": "tv monitor", "cat": "📱 Thiết bị"},
+
+    # Vật dụng cá nhân & Học tập
+    "Book": {"vi": "Quyển sách", "answer": "book", "cat": "🎒 Đồ dùng"},
+    "Scissors": {"vi": "Cái kéo", "answer": "scissors", "cat": "🎒 Đồ dùng"},
+    "Clock": {"vi": "Đồng hồ", "answer": "clock", "cat": "🎒 Đồ dùng"},
+    "Umbrella": {"vi": "Cái ô", "answer": "umbrella", "cat": "🎒 Đồ dùng"},
+    "Backpack": {"vi": "Balo", "answer": "backpack", "cat": "🎒 Đồ dùng"},
+    "Bottle": {"vi": "Cái chai", "answer": "bottle", "cat": "🎒 Đồ dùng"},
+    "Cup": {"vi": "Cái cốc", "answer": "cup", "cat": "🎒 Đồ dùng"},
+    "Toothbrush": {"vi": "Bàn chải", "answer": "toothbrush", "cat": "🎒 Đồ dùng"},
+    
+    # Thực phẩm
+    "Apple": {"vi": "Quả táo", "answer": "apple", "cat": "🍎 Thực phẩm"},
+    "Banana": {"vi": "Quả chuối", "answer": "banana", "cat": "🍎 Thực phẩm"},
+    "Orange": {"vi": "Quả cam", "answer": "orange", "cat": "🍎 Thực phẩm"},
+    "Pizza": {"vi": "Pizza", "answer": "pizza", "cat": "🍎 Thực phẩm"},
+    "Cake": {"vi": "Bánh ngọt", "answer": "cake", "cat": "🍎 Thực phẩm"},
+    
+    # Nội thất
+    # "Chair": {"vi": "Cái ghế", "answer": "chair", "cat": "🛋 Nội thất"},
+    "Sofa": {"vi": "Sofa", "answer": "sofa", "cat": "🛋 Nội thất"},
+    "Bed": {"vi": "Cái giường", "answer": "bed", "cat": "🛋 Nội thất"},
 }
 
 # YOLO Classes
@@ -267,27 +287,48 @@ def speak_vietnamese(text):
     speak_vietnamese_and_english(text, None)
 
 # ==================== UI DRAWING ====================
+_font_cache = {}
+
 def draw_vn_text(img, text, pos, size=24, color=(255, 255, 255)):
     try:
         pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
         draw = ImageDraw.Draw(pil_img)
-        try:
-            font = ImageFont.truetype(Config.FONT_PATH, size)
-        except:
-            font = ImageFont.load_default()
-        draw.text(pos, text, font=font, fill=color)
+        
+        global _font_cache
+        if size not in _font_cache:
+            try:
+                import platform
+                if platform.system() == "Darwin":
+                    font_path = "/System/Library/Fonts/Supplemental/Arial.ttf"
+                elif platform.system() == "Windows":
+                    font_path = "arial.ttf"
+                else:
+                    font_path = "DejaVuSans.ttf"
+                _font_cache[size] = ImageFont.truetype(font_path, size)
+            except Exception as e:
+                print(f"Lỗi Font: {e}")
+                _font_cache[size] = ImageFont.load_default()
+                
+        draw.text(pos, text, font=_font_cache[size], fill=color)
         return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
     except:
         return img
 
 def draw_detection_box(img, coords):
     x1, y1, x2, y2 = coords
-    cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 4)
+    
+    # Overlay tối mờ để nhấn mạnh vật thể
+    overlay = img.copy()
+    cv2.rectangle(overlay, (x1, y1), (x2, y2), (0, 0, 0), -1)
+    cv2.addWeighted(overlay, 0.4, img, 0.6, 0, img)
 
-    # Góc nhấn mạnh
-    L = 40
-    T = 6
-    C = (0, 255, 255)
+    # Viền mỏng
+    cv2.rectangle(img, (x1, y1), (x2, y2), (255, 255, 255), 1)
+
+    # Góc nhấn mạnh thẩm mỹ (Neon Cyan BGR)
+    L = 35
+    T = 4
+    C = (255, 255, 0) # Xanh Neon Cyan 
     # Top-left
     cv2.line(img, (x1, y1+L), (x1, y1), C, T)
     cv2.line(img, (x1, y1), (x1+L, y1), C, T)
@@ -301,111 +342,119 @@ def draw_detection_box(img, coords):
     cv2.line(img, (x2-L, y2), (x2, y2), C, T)
     cv2.line(img, (x2, y2-L), (x2, y2), C, T)
 
-    img = draw_vn_text(img, "Đặt vật ở đây", (x1 + 20, y1 - 35), 22, (0, 255, 255))
+    tx = x1 + (x2 - x1)//2 - 120
+    img = draw_vn_text(img, "✦ TRỌNG TÂM ✦", (max(0, tx), max(0, y1 - 40)), 22, (0, 255, 200))
     return img
 
 def draw_panel(h, w=500):
     panel = np.zeros((h, w, 3), dtype=np.uint8)
-    panel[:] = (45, 45, 45)
-    cv2.rectangle(panel, (0, 0), (w-1, h-1), (0, 200, 255), 3)
+    
+    # Thiết kế Dark Navy bóng bẩy cực hiện đại
+    panel[:] = (30, 25, 40)
+    cv2.rectangle(panel, (0, 0), (w-1, h-1), (80, 80, 90), 2)
 
-    y = 30
-    panel = draw_vn_text(panel, "🎮 AR QUIZ", (20, y), 32, (0, 255, 255))
-    y += 50
-    cv2.line(panel, (20, y), (w-20, y), (100, 100, 100), 2)
-    y += 25
+    y = 40
+    panel = draw_vn_text(panel, "🌟 LENS QUIZ", (35, y), 42, (0, 255, 200)) # Neon Mint (RGB cho draw_vn_text)
+    y += 60
+    cv2.line(panel, (25, y), (w-25, y), (70, 60, 90), 2)
+    y += 30
 
-    score_txt = f"SCORE: {quiz.score}/{quiz.total}"
-    panel = draw_vn_text(panel, score_txt, (20, y), 26, (0, 255, 0))
-    y += 45
+    # Khối trạng thái Điểm số
+    score_txt = f"🎯 ĐIỂM SỐ:   {quiz.score} / {quiz.total}"
+    cv2.rectangle(panel, (25, y-5), (w-25, y+50), (45, 40, 60), -1)
+    panel = draw_vn_text(panel, score_txt, (45, y+5), 30, (150, 255, 100))
+    y += 75
 
     if quiz.current_question:
-        # Question box
-        qh = 90
-        cv2.rectangle(panel, (15, y), (w-15, y+qh), (60, 120, 180), -1)
-        cv2.rectangle(panel, (15, y), (w-15, y+qh), (100, 150, 255), 2)
-        panel = draw_vn_text(panel, f"{quiz.current_question} ?", (25, y+15), 22, (255, 255, 255))
-        panel = draw_vn_text(panel, "in English?", (25, y+50), 18, (200, 200, 200))
+        # Hộp câu hỏi
+        qh = 120
+        cv2.rectangle(panel, (25, y), (w-25, y+qh), (60, 80, 180), -1)
+        panel = draw_vn_text(panel, f"{quiz.current_question} ?", (45, y+20), 32, (255, 255, 255))
+        panel = draw_vn_text(panel, "trong tiếng Anh gọi là ...", (45, y+70), 24, (200, 230, 255))
         y += qh + 25
 
-        # Timer
+        # Thông tin Thời gian 
         if quiz.waiting:
             elapsed = int(time.time() - quiz.q_start_time)
-            tc = (0, 255, 0) if elapsed < 10 else (255, 150, 0) if elapsed < 20 else (0, 0, 255)
-            panel = draw_vn_text(panel, f"⏱️ Time: {elapsed}s", (20, y), 22, tc)
-            y += 35
+            tc = (100, 255, 100) if elapsed < 10 else (255, 200, 0) if elapsed < 20 else (255, 50, 50)
+            panel = draw_vn_text(panel, f"⏳ Thời gian: {elapsed}s", (35, y), 26, tc)
+            y += 40
 
-        # Hint
+        # Gợi ý
         if quiz.show_hint:
-            panel = draw_vn_text(panel, f"💡 Hint: {quiz.get_hint()}", (20, y), 20, (255, 255, 100))
-            y += 35
+            panel = draw_vn_text(panel, f"💡 Gợi ý: {quiz.get_hint()}", (35, y), 26, (255, 210, 80))
+            y += 45
 
-        # Input box
-        panel = draw_vn_text(panel, "YOUR ANSWER:", (20, y), 20, (255, 255, 0))
+        # Khung nhập liệu
+        panel = draw_vn_text(panel, "CÂU TRẢ LỜI CỦA BẠN:", (35, y), 22, (180, 180, 200))
         y += 30
-        ih = 55
-        cv2.rectangle(panel, (15, y), (w-15, y+ih), (30, 30, 30), -1)
-        cv2.rectangle(panel, (15, y), (w-15, y+ih), (0, 255, 0), 3)
+        ih = 65
+        cv2.rectangle(panel, (25, y), (w-25, y+ih), (20, 15, 30), -1)
+        cv2.rectangle(panel, (25, y), (w-25, y+ih), (0, 200, 255) if quiz.waiting else (100,100,100), 2)
         txt = quiz.user_answer
         if quiz.waiting and int(time.time() * 2) % 2:
             txt += "|"
-        panel = draw_vn_text(panel, txt, (25, y+15), 24, (255, 255, 255))
-        y += ih + 25
+        panel = draw_vn_text(panel, txt, (45, y+15), 30, (255, 255, 255))
+        y += ih + 35
 
-        # Feedback
+        # Phản hồi Đúng/Sai
         if quiz.show_feedback and quiz.feedback:
-            fh = 100
-            bg = (0, 100, 0) if "✅" in quiz.feedback else (100, 0, 0)
-            bd = (0, 255, 0) if "✅" in quiz.feedback else (0, 0, 255)
-            cv2.rectangle(panel, (15, y), (w-15, y+fh), bg, -1)
-            cv2.rectangle(panel, (15, y), (w-15, y+fh), bd, 3)
-            panel = draw_vn_text(panel, quiz.feedback, (25, y+18), 22, (255, 255, 255))
+            fh = 110
+            bg = (40, 140, 60) if "✅" in quiz.feedback else (180, 50, 50)
+            cv2.rectangle(panel, (25, y), (w-25, y+fh), bg, -1)
+            panel = draw_vn_text(panel, quiz.feedback, (45, y+20), 30, (255, 255, 255))
             if quiz.answer_time > 0:
-                tc = (150, 255, 150) if quiz.answer_time < 10 else (255, 255, 150)
-                panel = draw_vn_text(panel, f"⏱️ {quiz.answer_time}s", (25, y+55), 18, tc)
-            y += fh + 20
+                panel = draw_vn_text(panel, f"⏳ Hoàn thành trong {quiz.answer_time}s", (45, y+65), 22, (200, 255, 200))
+            y += fh + 25
 
-        # Controls
-        y = h - 180
-        panel = draw_vn_text(panel, "CONTROLS:", (20, y), 18, (200, 200, 200))
-        y += 28
-        panel = draw_vn_text(panel, "ENTER - Submit", (20, y), 16, (150, 150, 150))
-        y += 23
-        panel = draw_vn_text(panel, "TAB - Hint (Gợi ý)", (20, y), 16, (255, 255, 100))
-        y += 23
-        panel = draw_vn_text(panel, "BACKSPACE - Delete", (20, y), 16, (150, 150, 150))
-        y += 23
-        panel = draw_vn_text(panel, "Q - Quit", (20, y), 16, (150, 150, 150))
-    else:
-        panel = draw_vn_text(panel, "Hướng camera vào", (20, y), 22, (200, 200, 200))
-        y += 30
-        panel = draw_vn_text(panel, "vật thể...", (20, y), 22, (200, 200, 200))
+        # Điều khiển
+        y = h - 140
+        cv2.line(panel, (25, y-15), (w-25, y-15), (70, 60, 90), 2)
+        panel = draw_vn_text(panel, "[ENTER] Trả lời   |   [TAB] Gợi ý", (30, y), 20, (160, 160, 180))
+        y += 35
+        panel = draw_vn_text(panel, "[BACK] Xóa        |   [Q] Thoát", (30, y), 20, (160, 160, 180))
+    else: # Màn hình chờ
+        panel = draw_vn_text(panel, "Đang quét...", (35, y), 32, (180, 180, 200))
         y += 45
+        panel = draw_vn_text(panel, "1. Hãy trỏ camera vào vật thể", (35, y), 22, (150, 200, 150))
+        y += 35
+        panel = draw_vn_text(panel, "2. Xin chờ trong giây lát...", (35, y), 22, (150, 200, 150))
+        y += 55
 
-        # Categories
+        # Danh mục phân cột
         cats = {}
         for obj, info in VOCAB_DB.items():
             c = info.get("cat", "Khác")
-            if c not in cats:
-                cats[c] = []
+            if c not in cats: cats[c] = []
             cats[c].append((obj, info["vi"]))
 
-        for cat in ["👤 Người", "🦜 Động vật", "🚗 Phương tiện", "📱 Đồ dùng"]:
-            if cat not in cats:
-                continue
-            panel = draw_vn_text(panel, cat, (20, y), 18, (255, 255, 0))
-            y += 28
+        # Lặp tự động thay vì gán cứng (hardcode)
+        for cat in sorted(cats.keys()):
+            # Khung Label của Cat
+            panel = draw_vn_text(panel, cat, (30, y), 24, (255, 200, 50))
+            y += 40
+            
+            # Cột
+            col_width = (w - 60) // 2
+            col_x = [35, 35 + col_width]
+            col_idx = 0
+            
             for obj, vi in sorted(cats[cat], key=lambda x: x[1]):
-                emoji = "✓" if obj == quiz.current_object else "○"
-                col = (0, 255, 0) if obj == quiz.current_object else (150, 150, 150)
-                name = vi if len(vi) <= 15 else vi[:13] + ".."
-                panel = draw_vn_text(panel, f"{emoji} {name}", (30, y), 16, col)
-                y += 23
-                if y > h - 50:
-                    break
-            y += 5
-            if y > h - 50:
-                break
+                emoji = "●" if obj == quiz.current_object else "○"
+                col = (0, 255, 120) if obj == quiz.current_object else (150, 150, 160)
+                name = vi if len(vi) <= 12 else vi[:10] + ".."
+                panel = draw_vn_text(panel, f"{emoji} {name}", (col_x[col_idx], y), 20, col)
+                
+                col_idx += 1
+                if col_idx > 1:
+                    col_idx = 0
+                    y += 35
+                    if y > h - 40: break
+            if y > h - 40: break
+            
+            if col_idx == 1: y += 35
+            y += 15
+            if y > h - 40: break
 
     return panel
 
@@ -464,6 +513,8 @@ def main():
     print("="*70 + "\n")
 
     last_detect = 0
+    frame_count = 0
+    cached_best = None
 
     while True:
         ret, img = cap.read()
@@ -476,7 +527,7 @@ def main():
             img = cv2.resize(img, (cam_w, Config.CAMERA_HEIGHT))
             h, w, _ = img.shape
 
-            # Detection box
+            # Khung nhận diện rộng kiểu ban đầu (margin từ 4 cạnh)
             m = int((1 - Config.DETECTION_BOX_RATIO) / 2 * min(w, h))
             box = (m, m, w - m, h - m)
             img = draw_detection_box(img, box)
@@ -487,33 +538,49 @@ def main():
             best = None
             max_conf = 0
 
-            results = model(img, stream=True, verbose=False, imgsz=640)
+            frame_count += 1
+            if frame_count % 2 != 0:
+                # Frame skip: lấy kết quả cũ để duy trì giao diện / FPS hiển thị
+                best = cached_best
+            else:
+                results = model(img, stream=True, verbose=False, imgsz=640)
 
-            for r in results:
-                for box_data in r.boxes:
-                    try:
-                        x1, y1, x2, y2 = map(int, box_data.xyxy[0])
-                        conf = float(box_data.conf[0])
+                for r in results:
+                    for box_data in r.boxes:
+                        try:
+                            x1, y1, x2, y2 = map(int, box_data.xyxy[0])
+                            conf = float(box_data.conf[0])
 
-                        if conf < Config.CONFIDENCE_THRESHOLD:
+                            if conf < Config.CONFIDENCE_THRESHOLD:
+                                continue
+
+                            cls = int(box_data.cls[0])
+                            if cls >= len(YOLO_CLASSES):
+                                continue
+
+                            obj = YOLO_CLASSES[cls]
+                            if obj not in VOCAB_DB:
+                                continue
+
+                            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+                            in_box = (box[0] < cx < box[2] and box[1] < cy < box[3])
+
+                            import math
+                            # Tính khoảng cách từ tâm khung hình đến tâm đồ vật
+                            dist_to_center = math.hypot(cx - w//2, cy - h//2)
+                            
+                            # Càng gần tâm màn hình, vật đó càng được ưu tiên trọng số cực cao (+ tối đa 2.0 điểm)
+                            # Điều này triệt tiêu hoàn toàn lỗi "Bắt nhầm cái ghế khổng lồ ở tít đằng xa"
+                            center_bonus = max(0, 1.0 - (dist_to_center / (w / 2))) * 2.0
+
+                            adjusted_conf = conf + center_bonus
+
+                            if in_box and adjusted_conf > max_conf:
+                                max_conf = adjusted_conf
+                                best = {'obj': obj, 'conf': conf, 'box': (x1, y1, x2, y2)}
+                        except:
                             continue
-
-                        cls = int(box_data.cls[0])
-                        if cls >= len(YOLO_CLASSES):
-                            continue
-
-                        obj = YOLO_CLASSES[cls]
-                        if obj not in VOCAB_DB:
-                            continue
-
-                        cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-                        in_box = (box[0] < cx < box[2] and box[1] < cy < box[3])
-
-                        if in_box and conf > max_conf:
-                            max_conf = conf
-                            best = {'obj': obj, 'conf': conf, 'box': (x1, y1, x2, y2)}
-                    except:
-                        continue
+                cached_best = best
 
             # Process best detection
             if best:
